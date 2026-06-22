@@ -1,0 +1,47 @@
+/*
+ * Stylesheet for local_emailclient.
+ *
+ * Loaded via $PAGE->requires->css() from index.php and view.php.
+ */
+
+/* Folder list: use <a> as list-group-item (Bootstrap 4/5 pattern).
+ * Force white text when active so the label is readable on the blue
+ * background, regardless of what the Moodle theme sets for <a> colours. */
+.emailclient-folder-list a.list-group-item {
+    color: inherit;
+}
+
+.emailclient-folder-list a.list-group-item.active,
+.emailclient-folder-list a.list-group-item.active:hover,
+.emailclient-folder-list a.list-group-item.active:focus {
+    color: #fff;
+}
+
+.emailclient-message-list td {
+    vertical-align: middle;
+}
+
+.emailclient-message-view .emailclient-headers > div {
+    margin-bottom: 0.25rem;
+}
+
+.emailclient-body .emailclient-html-body {
+    overflow-x: auto;
+    word-break: break-word;
+}
+
+.emailclient-body .emailclient-html-body img {
+    max-width: 100%;
+}
+
+.emailclient-attachments .list-group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.emailclient-pagination {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
