@@ -277,8 +277,12 @@ class imap_client {
      */
     public function find_special_folder(array $candidates): ?string {
         foreach ($this->get_folders() as $folder) {
+            // Compare only the leaf segment so 'INBOX.Papierkorb' matches
+            // the candidate 'Papierkorb' (same fix as in folder_label()).
+            $parts = preg_split('/[\.\/ ]/', $folder->name);
+            $leaf  = (string) end($parts);
             foreach ($candidates as $cand) {
-                if (strcasecmp($folder->name, $cand) === 0) {
+                if (strcasecmp($leaf, $cand) === 0) {
                     return $folder->rawname;
                 }
             }
@@ -436,6 +440,50 @@ class imap_client {
     }
 
     /**
+     * Appends a raw MIME message to the user's Sent folder so a copy of
+     * every outgoing message is saved on the IMAP server (mirrors the
+     * behaviour of Thunderbird, Outlook, etc.).
+     *
+     * The method silently does nothing if no Sent folder can be found or if
+     * the append fails – the email has already been delivered via SMTP, so
+     * a missing Sent-folder copy is not fatal.
+     *
+     * @param string $rawmessage Full RFC 2822 message (MIMEHeader + MIMEBody
+     *                           as returned by PHPMailer after send()).
+     * @return void
+     */
+    public function append_to_sent(string $rawmessage): void {
+        if ($rawmessage === '') {
+            return;
+        }
+        try {
+            $folders   = $this->get_folders();
+            $sentraw   = null;
+            $sentneedles = ['sent', 'gesendet', 'sent items', 'sent messages', 'gesendete'];
+            foreach ($folders as $folder) {
+                $lower = mb_strtolower($folder->name, 'UTF-8');
+                foreach ($sentneedles as $needle) {
+                    if (mb_strpos($lower, $needle, 0, 'UTF-8') !== false) {
+                        $sentraw = $folder->rawname;
+                        break 2;
+                    }
+                }
+            }
+            if ($sentraw === null) {
+                return;
+            }
+            // imap_append() needs an open connection and the full mailbox
+            // string including the server prefix.
+            $this->open($sentraw);
+            $mailboxstring = $this->build_mailbox_string($sentraw);
+            @imap_append($this->connection, $mailboxstring, $rawmessage, '\Seen');
+        } catch (\Throwable $e) {
+            // Non-fatal – log to Moodle debugging but don't interrupt the user.
+            debugging('local_emailclient: could not append to Sent folder: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
      * Returns the raw decoded data of one attachment part.
      *
      * @param string $folder Raw folder name.
@@ -509,6 +557,10 @@ class imap_client {
         if ($trash !== null && strcasecmp($trash, $folder) !== 0) {
             $ok = @imap_mail_move($this->connection, (string) $uid, $trash, CP_UID);
             if ($ok) {
+                // imap_mail_move() copies the message and marks it \Deleted
+                // in the source folder, but does NOT physically remove it.
+                // imap_expunge() is required to actually delete it there.
+                @imap_expunge($this->connection);
                 $this->invalidate_cache();
                 return true;
             }

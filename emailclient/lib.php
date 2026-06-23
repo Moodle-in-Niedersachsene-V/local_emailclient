@@ -17,8 +17,10 @@
 /**
  * Library callbacks for local_emailclient.
  *
- * This file is intentionally kept small. All real logic lives in
- * autoloaded classes under classes/.
+ * Only the extend_navigation() legacy callback remains here (still
+ * documented and supported in Moodle 5.x for the nav drawer).
+ * The before_http_headers logic has been moved to the proper Hooks API:
+ * see classes/hook_callbacks.php and db/hooks.php.
  *
  * @package     local_emailclient
  * @copyright   2026 Your Organisation
@@ -28,9 +30,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Adds the plugin's entry point to the main Moodle navigation, so that
- * it shows up as its own menu item once a user is logged in (and not
- * a guest) and has the required capability.
+ * Adds the plugin's entry point to the Moodle navigation drawer.
  *
  * @param global_navigation $navigation
  * @return void
@@ -40,8 +40,7 @@ function local_emailclient_extend_navigation(global_navigation $navigation): voi
         return;
     }
 
-    $context = context_system::instance();
-    if (!has_capability('local/emailclient:use', $context)) {
+    if (!\local_emailclient\page_helper::has_access()) {
         return;
     }
 
@@ -55,36 +54,5 @@ function local_emailclient_extend_navigation(global_navigation $navigation): voi
     );
     $node->showinflatnavigation = true;
 
-    // Attach at the top level so it is visible regardless of which
-    // page/context the user is currently viewing.
     $navigation->add_node($node);
-}
-
-/**
- * Injects the plugin link into Moodle's custom menu items so it appears
- * in the primary navigation bar (top bar in Boost) for eligible users.
- *
- * before_http_headers() is called by Moodle core on every page request,
- * before output starts, making it the correct place to modify $CFG for
- * local plugins. We prepend our entry to $CFG->custommenuitems; Boost
- * renders these as top-navigation tabs alongside Dashboard / My courses.
- *
- * @return void
- */
-function local_emailclient_before_http_headers(): void {
-    global $CFG;
-
-    // Reuse the same two-step access check as the page scripts so that
-    // the menu item appears for course-level trainers as well.
-    if (!\local_emailclient\page_helper::has_access()) {
-        return;
-    }
-
-    $label = get_string('pluginname', 'local_emailclient');
-    $url   = (new moodle_url('/local/emailclient/index.php'))->out(false);
-    $entry = "{$label}|{$url}\n";
-
-    // Prepend to the existing custom menu items so we don't overwrite
-    // entries the site administrator has configured manually.
-    $CFG->custommenuitems = $entry . ($CFG->custommenuitems ?? '');
 }

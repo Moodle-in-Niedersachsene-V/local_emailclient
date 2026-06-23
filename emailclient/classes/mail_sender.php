@@ -57,10 +57,11 @@ class mail_sender {
      *     attachments: array of {filename, mimetype, content} (raw binary content),
      *     inreplyto: string Optional Message-ID header value to set In-Reply-To/References.
      * }
-     * @return void
+     * @return string Raw MIME message (headers + body) for optional
+     *                  saving to the IMAP Sent folder by the caller.
      * @throws \moodle_exception on failure (the original PHPMailer error is included).
      */
-    public function send(array $params): void {
+    public function send(array $params): string {
         require_once($GLOBALS['CFG']->libdir . '/phpmailer/moodle_phpmailer.php');
 
         $mail = new PHPMailer(true);
@@ -133,11 +134,17 @@ class mail_sender {
             }
 
             $mail->send();
+            // getSentMIMEMessage() is PHPMailer's public API for retrieving
+            // the full raw RFC 2822 message after a successful send().
+            // MIMEHeader/MIMEBody are protected and must not be accessed
+            // directly from outside the class.
+            return $mail->getSentMIMEMessage();
         } catch (PHPMailerException $e) {
             throw new \moodle_exception('compose:senderror', 'local_emailclient', '', $mail->ErrorInfo ?: $e->getMessage());
         } catch (\Exception $e) {
             throw new \moodle_exception('compose:senderror', 'local_emailclient', '', $e->getMessage());
         }
+        return ''; // unreachable, satisfies static analysis
     }
 
     /**

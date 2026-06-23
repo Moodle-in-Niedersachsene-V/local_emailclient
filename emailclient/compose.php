@@ -96,7 +96,7 @@ if ($mform->is_cancelled()) {
     $bodyhtml = $data->message['text'] ?? '';
 
     try {
-        (new mail_sender($account))->send([
+        $rawmessage = (new mail_sender($account))->send([
             'to'          => $data->to,
             'cc'          => $data->cc,
             'bcc'         => $data->bcc,
@@ -111,8 +111,12 @@ if ($mform->is_cancelled()) {
             $fs->delete_area_files($usercontext->id, 'user', 'draft', $data->attachments);
         }
 
+        // Save a copy to the IMAP Sent folder (SMTP itself does not do this).
+        $imapforappend = new imap_client($account);
+        $imapforappend->append_to_sent($rawmessage);
+
         // Invalidate IMAP cache so the sent folder shows the new message.
-        (new \local_emailclient\imap_client($account))->invalidate_cache();
+        $imapforappend->invalidate_cache();
 
         redirect(
             new moodle_url('/local/emailclient/index.php'),
