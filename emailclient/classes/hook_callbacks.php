@@ -50,9 +50,15 @@ class hook_callbacks {
 
         $label = get_string('pluginname', 'local_emailclient');
         $url   = (new \moodle_url('/local/emailclient/index.php'))->out(false);
-        $entry = "{$label}|{$url}\n";
 
-        // Prepend so we don't overwrite entries the admin configured manually.
-        $CFG->custommenuitems = $entry . ($CFG->custommenuitems ?? '');
+        // Build the full block (top-level + sub-items) and prepend it so
+        // the indented Kontakte entry stays directly under E-Mail-Client,
+        // not under whatever plugin happens to be last in the custom menu.
+        $clabel = get_string('page:contacts', 'local_emailclient');
+        $curl   = (new \moodle_url('/local/emailclient/contacts.php'))->out(false);
+
+        $block = "{$label}|{$url}\n-{$clabel}|{$curl}\n";
+
+        $CFG->custommenuitems = $block . ($CFG->custommenuitems ?? '');
     }
 }

@@ -45,3 +45,24 @@
     flex-direction: column;
     align-items: flex-start;
 }
+
+/* Contacts */
+.emailclient-contacts td {
+    vertical-align: middle;
+}
+
+.emailclient-contact-picker {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.emailclient-contact-list .emailclient-contact-item:hover {
+    background-color: #e9ecef;
+}
+
+.emailclient-autocomplete {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}

@@ -180,6 +180,11 @@ echo $OUTPUT->single_button(
     get_string('messages:compose', 'local_emailclient'),
     'get'
 );
+echo $OUTPUT->single_button(
+    new moodle_url('/local/emailclient/contacts.php'),
+    get_string('page:contacts', 'local_emailclient'),
+    'get'
+);
 
 if ($foldererror !== null) {
     echo $OUTPUT->notification(get_string('error:folderlistfailed', 'local_emailclient', $foldererror), 'error');

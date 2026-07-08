@@ -152,4 +152,18 @@ if ($hassiteconfig) {
         'tls',
         $smtpsecuritychoices
     ));
+
+    // Contacts / address book settings.
+    $settings->add(new admin_setting_heading(
+        'local_emailclient/contactsheading',
+        get_string('settings:contactsheading', 'local_emailclient'),
+        get_string('settings:contactsheading_desc', 'local_emailclient')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'local_emailclient/allowsharedcontacts',
+        get_string('settings:allowsharedcontacts', 'local_emailclient'),
+        get_string('settings:allowsharedcontacts_desc', 'local_emailclient'),
+        1
+    ));
 }

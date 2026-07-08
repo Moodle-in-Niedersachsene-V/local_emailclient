@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_emailclient';
-$plugin->version    = 2026061918;          // YYYYMMDDXX.
+$plugin->version    = 2026070805;          // YYYYMMDDXX.
 $plugin->requires   = 2025100600;          // Moodle 5.1.0 (Build: 20251006).
 $plugin->supported  = [501, 999];          // Moodle 5.1 and any later 5.x / future branch.
 $plugin->maturity   = MATURITY_STABLE;

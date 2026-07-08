@@ -30,6 +30,7 @@ use local_emailclient\mail_sender;
 use local_emailclient\html_sanitizer;
 use local_emailclient\page_helper;
 use local_emailclient\form\compose_form;
+use local_emailclient\contact_manager;
 
 page_helper::require_access();
 
@@ -68,6 +69,9 @@ function local_emailclient_strip_own_address(string $list, string $ownemail): st
     $parts = array_filter($parts, fn($addr) => stripos($addr, $ownemail) === false);
     return implode(', ', $parts);
 }
+
+// Pre-fill To field when launched from the contacts page.
+$to_prefill = optional_param('to', '', PARAM_EMAIL);
 
 $mform = new compose_form(null, ['maxbytes' => $maxbytes]);
 
@@ -138,7 +142,7 @@ if ($mform->is_cancelled()) {
         'action' => $action,
         'origfolder' => $folder,
         'origuid' => $origuid,
-        'to' => '', 'cc' => '', 'bcc' => '', 'subject' => '', 'inreplyto' => '',
+        'to' => $to_prefill, 'cc' => '', 'bcc' => '', 'subject' => '', 'inreplyto' => '',
         'message' => ['text' => '', 'format' => FORMAT_HTML],
     ];
 
@@ -192,5 +196,120 @@ if ($mform->is_cancelled()) {
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string($titlekey, 'local_emailclient'));
+
+// Contact picker button + panel.
+$contacts = contact_manager::get_all_for_user($USER->id);
+if (!empty($contacts)) {
+    // Build contacts JSON for JS.
+    $contactsjson = json_encode(array_values(array_map(function($c) {
+        $name  = trim($c->firstname . ' ' . $c->lastname);
+        $label = $name !== '' ? $name . ' <' . $c->email . '>' : $c->email;
+        return ['email' => $c->email, 'name' => $name, 'label' => $label];
+    }, $contacts)));
+
+    echo html_writer::tag('button', get_string('contact:picker', 'local_emailclient'), [
+        'type'  => 'button',
+        'class' => 'btn btn-outline-secondary btn-sm mb-3',
+        'id'    => 'emailclient-contact-toggle',
+    ]);
+    echo html_writer::start_div('emailclient-contact-picker card card-body mb-3',
+        ['id' => 'emailclient-contact-panel', 'style' => 'display:none;']);
+    echo html_writer::empty_tag('input', [
+        'type' => 'text', 'id' => 'emailclient-contact-search',
+        'class' => 'form-control mb-2',
+        'placeholder' => get_string('contact:search', 'local_emailclient'),
+    ]);
+    echo html_writer::start_tag('ul', ['class' => 'list-group emailclient-contact-list',
+        'id' => 'emailclient-contact-list']);
+    foreach ($contacts as $c) {
+        $cname = trim(s($c->firstname) . ' ' . s($c->lastname));
+        echo html_writer::tag('li', $cname . ' &lt;' . s($c->email) . '&gt;', [
+            'class'      => 'list-group-item list-group-item-action emailclient-contact-item',
+            'data-email' => s($c->email),
+            'data-name'  => $cname,
+            'style'      => 'cursor:pointer;',
+        ]);
+    }
+    echo html_writer::end_tag('ul');
+    echo html_writer::end_div();
+}
+
 $mform->display();
+
+if (!empty($contacts)) {
+    // Inline JS for contact picker and autocomplete.
+    // Use heredoc so no PHP escaping issues with quotes inside JS.
+    $js = <<<JSEOF
+require(['jquery'], function($) {
+    var contacts = {$contactsjson};
+
+    $('#emailclient-contact-toggle').on('click', function() {
+        $('#emailclient-contact-panel').toggle();
+        $('#emailclient-contact-search').val('').trigger('input').focus();
+    });
+
+    $('#emailclient-contact-search').on('input', function() {
+        var q = $(this).val().toLowerCase();
+        $('#emailclient-contact-list .emailclient-contact-item').each(function() {
+            $(this).toggle(q === '' || $(this).text().toLowerCase().indexOf(q) !== -1);
+        });
+    });
+
+    $('#emailclient-contact-list').on('click', '.emailclient-contact-item', function() {
+        var email = $(this).data('email');
+        var name  = $(this).data('name');
+        var entry = name ? name + ' <' + email + '>' : email;
+        var toField = $('input[name=to]');
+        var cur = toField.val().trim();
+        toField.val(cur ? cur + ', ' + entry : entry);
+        $('#emailclient-contact-panel').hide();
+    });
+
+    function setupAutocomplete(sel) {
+        var inp = $(sel);
+        if (!inp.length) { return; }
+        var drop = $('<ul>').addClass('list-group emailclient-autocomplete').css({
+            position: 'absolute', zIndex: 1000, maxHeight: '200px',
+            overflowY: 'auto', minWidth: inp.outerWidth()
+        }).hide().insertAfter(inp);
+
+        inp.on('input', function() {
+            var val  = inp.val();
+            var last = val.split(/[,;]/).pop().trim().toLowerCase();
+            if (last.length < 2) { drop.hide(); return; }
+            var hits = contacts.filter(function(c) {
+                return c.label.toLowerCase().indexOf(last) !== -1;
+            }).slice(0, 8);
+            drop.empty();
+            if (!hits.length) { drop.hide(); return; }
+            hits.forEach(function(c) {
+                $('<li>').addClass('list-group-item list-group-item-action')
+                    .css({cursor: 'pointer', fontSize: '0.9em'})
+                    .text(c.label)
+                    .on('click', function() {
+                        var parts = val.split(/[,;]/);
+                        parts[parts.length - 1] = ' ' + (c.name ? c.name + ' <' + c.email + '>' : c.email);
+                        inp.val(parts.join(',').replace(/^,\s*/, ''));
+                        drop.hide();
+                    })
+                    .appendTo(drop);
+            });
+            drop.show();
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest(inp).length && !$(e.target).closest(drop).length) {
+                drop.hide();
+            }
+        });
+    }
+
+    setupAutocomplete('input[name=to]');
+    setupAutocomplete('input[name=cc]');
+    setupAutocomplete('input[name=bcc]');
+});
+JSEOF;
+    $PAGE->requires->js_amd_inline($js);
+}
+
 echo $OUTPUT->footer();

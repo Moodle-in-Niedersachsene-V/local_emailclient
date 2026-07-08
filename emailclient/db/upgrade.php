@@ -24,15 +24,37 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/**
- * Runs upgrade steps for this plugin.
- *
- * @param int $oldversion the version we are upgrading from.
- * @return bool always true.
- */
 function xmldb_local_emailclient_upgrade(int $oldversion): bool {
-    // No upgrade steps yet - this is the initial release (1.0.0).
-    // Future schema changes go here, each guarded by:
-    // if ($oldversion < YYYYMMDDXX) { ... ; upgrade_plugin_savepoint(true, YYYYMMDDXX, 'local', 'emailclient'); }
+    global $DB;
+    $dbman = $DB->get_manager();
+
+    if ($oldversion < 2026070801) {
+        // Add the contacts table for existing installations.
+        $table = new xmldb_table('local_emailclient_contacts');
+
+        $table->add_field('id',           XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('userid',       XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('shared',       XMLDB_TYPE_INTEGER, '1',   null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('firstname',    XMLDB_TYPE_CHAR,    '100', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('lastname',     XMLDB_TYPE_CHAR,    '100', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('email',        XMLDB_TYPE_CHAR,    '254', null, XMLDB_NOTNULL);
+        $table->add_field('phone',        XMLDB_TYPE_CHAR,    '50',  null, null);
+        $table->add_field('organisation', XMLDB_TYPE_CHAR,    '200', null, null);
+        $table->add_field('notes',        XMLDB_TYPE_TEXT,    null,  null, null);
+        $table->add_field('timecreated',  XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10',  null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary',   XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('fk_userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        $table->add_index('idx_shared', XMLDB_INDEX_NOTUNIQUE, ['shared']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026070801, 'local', 'emailclient');
+    }
+
     return true;
 }

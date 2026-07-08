@@ -111,9 +111,24 @@ usort($allroles, function($a, $b) {
 
 foreach ($allroles as $role) {
     $checked  = isset($allowedroles[$role->id]);
-    $archname = $role->archetype
-        ? get_string('archetype_' . $role->archetype, 'role')
-        : get_string('adminroles:customrole', 'local_emailclient');
+
+    // Moodle 5.x no longer exposes 'archetype_xxx' strings in the 'role'
+    // component, so we map archetypes to display names ourselves.
+    static $archetypelabels = null;
+    if ($archetypelabels === null) {
+        $archetypelabels = [
+            'guest'          => 'Gast / Guest',
+            'user'           => 'Authentifizierte/r Nutzer/in / Authenticated user',
+            'student'        => 'Teilnehmer/in / Student',
+            'teacher'        => 'Trainer/in / Non-editing teacher',
+            'editingteacher' => 'Trainer/in (Bearbeitung) / Teacher',
+            'manager'        => 'Manager/in / Manager',
+            'coursecreator'  => 'Kursersteller/in / Course creator',
+            'frontpage'      => 'Startseite / Frontpage',
+        ];
+    }
+    $archname = $archetypelabels[$role->archetype]
+        ?? ($role->archetype ? ucfirst($role->archetype) : get_string('adminroles:customrole', 'local_emailclient'));
 
     $checkboxattrs = [
         'type'  => 'checkbox',
