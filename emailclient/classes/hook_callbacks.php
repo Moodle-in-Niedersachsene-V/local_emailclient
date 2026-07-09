@@ -51,13 +51,14 @@ class hook_callbacks {
         $label = get_string('pluginname', 'local_emailclient');
         $url   = (new \moodle_url('/local/emailclient/index.php'))->out(false);
 
-        // Build the full block (top-level + sub-items) and prepend it so
-        // the indented Kontakte entry stays directly under E-Mail-Client,
-        // not under whatever plugin happens to be last in the custom menu.
-        $clabel = get_string('page:contacts', 'local_emailclient');
-        $curl   = (new \moodle_url('/local/emailclient/contacts.php'))->out(false);
+        $inboxlabel   = get_string('folders:inbox',   'local_emailclient');
+        $clabel       = get_string('page:contacts',   'local_emailclient');
+        $curl         = (new \moodle_url('/local/emailclient/contacts.php'))->out(false);
 
-        $block = "{$label}|{$url}\n-{$clabel}|{$curl}\n";
+        // In Boost, a parent item with sub-items becomes a dropdown toggle
+        // and is no longer directly clickable. We therefore add "Posteingang"
+        // as the first sub-item so the mailbox is reachable from the dropdown.
+        $block = "{$label}|{$url}\n-{$inboxlabel}|{$url}\n-{$clabel}|{$curl}\n";
 
         $CFG->custommenuitems = $block . ($CFG->custommenuitems ?? '');
     }

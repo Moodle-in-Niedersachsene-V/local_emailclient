@@ -66,3 +66,15 @@
     background: #fff;
     box-shadow: 0 2px 8px rgba(0,0,0,.1);
 }
+
+/* Contact form: reduce label column width so fields don't wrap */
+.emailclient-contactform .fitem .fitemtitle {
+    min-width: 0 !important;
+    width: 30% !important;
+}
+.emailclient-contactform .fitem .felement {
+    width: 68% !important;
+}
+.emailclient-contactform .fitem {
+    flex-wrap: nowrap !important;
+}

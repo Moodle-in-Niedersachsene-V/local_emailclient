@@ -94,7 +94,7 @@ echo $OUTPUT->header();
 echo html_writer::start_div('row');
 
 // Left: back to inbox + contact list.
-echo html_writer::start_div('col-md-8');
+echo html_writer::start_div('col-md-7');
 echo $OUTPUT->heading(get_string('page:contacts', 'local_emailclient'));
 echo html_writer::link(
     new moodle_url('/local/emailclient/index.php'),
@@ -168,7 +168,7 @@ if (empty($contacts)) {
 echo html_writer::end_div();
 
 // Right: add/edit form.
-echo html_writer::start_div('col-md-4');
+echo html_writer::start_div('col-md-5 emailclient-contactform');
 echo $OUTPUT->heading(
     $editmode ? get_string('contact:edit', 'local_emailclient') : get_string('contact:add', 'local_emailclient'),
     4
